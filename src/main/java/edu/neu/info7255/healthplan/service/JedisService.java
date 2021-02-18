@@ -1,6 +1,7 @@
 package edu.neu.info7255.healthplan.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.stereotype.Service;
@@ -121,11 +122,17 @@ public class JedisService {
     }
 
 
-    public void savePlan(String pre, JSONObject object){
+    public String savePlanAndGetETag(String pre, JSONObject object){
 
         saveToRedis(pre, String.valueOf(object));
 
         saveMapfromJSONObject(pre, object);
+
+        String newEtag = DigestUtils.md5Hex(object.toString());
+        String eTag_key = pre + SEPARATOR +"eTag";
+        saveToRedis(eTag_key, newEtag);
+
+        return newEtag;
     }
 
     public Map<String, Object> saveMapfromJSONObject(String pre, JSONObject object) {
@@ -171,6 +178,26 @@ public class JedisService {
             log.error(e.getMessage());
             throw e;
         }
+    }
+
+
+    // Sets the specified hash field to the specified value
+    public void hSet(String key, String field, String value ) {
+
+        Jedis jedis = null;
+        try {
+
+            jedis = pool.getResource();
+            jedis.hset(key, field, value);
+        } catch (JedisException e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            if(jedis != null){
+                jedis.close();
+            }
+        }
+
     }
 
 

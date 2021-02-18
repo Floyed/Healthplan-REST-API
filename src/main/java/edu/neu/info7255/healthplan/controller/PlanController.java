@@ -43,6 +43,14 @@ public class PlanController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JSONObject().put("Message", "Plan does not exist").toString());
             }
 
+            String actualEtag = key + jedisService.SEPARATOR +"eTag";
+            String storedETag = jedisService.getPlan(actualEtag);
+
+            String eTag = headers.getFirst("If-None-Match");
+            if (eTag != null && eTag.equals(storedETag)) {
+                return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(actualEtag).build();
+            }
+
             JSONObject plan = new JSONObject(jedisService.getPlan(key));
 
             return ResponseEntity.ok().body(plan.toString());
@@ -77,9 +85,9 @@ public class PlanController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(new JSONObject().put("Message", "Plan already exist").toString());
             }
 
-            jedisService.savePlan(key, json);
+            String eTag = jedisService.savePlanAndGetETag(key, json);
 
-            return ResponseEntity.ok().body(" {\"message\": \"Created data with key: " + json.get("objectId") + "\" }");
+            return ResponseEntity.ok().eTag(eTag).body(" {\"message\": \"Created data with key: " + json.get("objectId") + "\" }");
 
         } catch (Exception e) {
             e.printStackTrace();

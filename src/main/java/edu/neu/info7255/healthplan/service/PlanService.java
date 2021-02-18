@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.apache.commons.codec.digest.DigestUtils;
 
+import java.util.Map;
 import java.util.Set;
 
 @Service @Slf4j
@@ -26,6 +28,12 @@ public class PlanService {
     private SchemaController schemaController;
 
     public static void main(String[] args) {
+    }
+
+    public String getETag(String planObject, String key) {
+        String newEtag = DigestUtils.md5Hex(planObject);
+        jedisService.hSet(key, "eTag", newEtag);
+        return newEtag;
     }
 
     public JSONObject getPlanFromKey(String key){
