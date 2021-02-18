@@ -67,7 +67,7 @@ public class JedisService {
         }
     }
 
-    public String getPlan(String key) {
+    public String getValueFromKey(String key) {
 
         Jedis jedis = null;
 

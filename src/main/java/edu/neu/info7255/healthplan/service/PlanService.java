@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.apache.commons.codec.digest.DigestUtils;
 
-import java.util.Map;
 import java.util.Set;
 
 @Service @Slf4j
@@ -38,7 +37,7 @@ public class PlanService {
 
     public JSONObject getPlanFromKey(String key){
 
-        String plan = jedisService.getPlan(key);
+        String plan = jedisService.getValueFromKey(key);
         JSONObject ret = new JSONObject(plan);
 
         return ret;

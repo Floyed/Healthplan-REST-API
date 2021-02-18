@@ -34,7 +34,7 @@ public class PlanController {
         try{
 
             if (planId == null || planId.equals("")) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", "Body is Empty.Kindly provide the JSON").toString());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", "Plan Id required").toString());
             }
 
             String key = "plan" + jedisService.SEPARATOR + planId;
@@ -43,22 +43,24 @@ public class PlanController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JSONObject().put("Message", "Plan does not exist").toString());
             }
 
-            String actualEtag = key + jedisService.SEPARATOR +"eTag";
-            String storedETag = jedisService.getPlan(actualEtag);
+            String eTagKey = key + jedisService.SEPARATOR +"eTag";
 
-            String eTag = headers.getFirst("If-None-Match");
-            if (eTag != null && eTag.equals(storedETag)) {
-                return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(actualEtag).build();
+            String storedETagValue = jedisService.getValueFromKey(eTagKey);
+            String requestETagValue = headers.getFirst("If-None-Match");
+
+            if (requestETagValue != null && requestETagValue.equals(storedETagValue)) {
+                //etag value is the same as stored
+                return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(storedETagValue).build();
             }
 
-            JSONObject plan = new JSONObject(jedisService.getPlan(key));
+            JSONObject plan = new JSONObject(jedisService.getValueFromKey(key));
 
-            return ResponseEntity.ok().body(plan.toString());
+            return ResponseEntity.ok().eTag(storedETagValue).body(plan.toString());
 
         } catch(Exception e){
             e.printStackTrace();
             log.error("Exception occurred", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", e.getMessage()).toString());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new JSONObject().put("Error", e.getMessage()).toString());
         }
     }
 
@@ -87,12 +89,12 @@ public class PlanController {
 
             String eTag = jedisService.savePlanAndGetETag(key, json);
 
-            return ResponseEntity.ok().eTag(eTag).body(" {\"message\": \"Created data with key: " + json.get("objectId") + "\" }");
+            return ResponseEntity.status(HttpStatus.CREATED).eTag(eTag).body(" {\"message\": \"Created data with key: " + json.get("objectId") + "\" }");
 
         } catch (Exception e) {
             e.printStackTrace();
             log.error("Exception occurred", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", e.getMessage()).toString());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new JSONObject().put("Error", e.getMessage()).toString());
         }
 
 
@@ -120,7 +122,7 @@ public class PlanController {
 
         } catch (Exception ex) {
             ex.printStackTrace();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", ex.getMessage()).toString());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new JSONObject().put("Error", ex.getMessage()).toString());
         }
     }
 }
