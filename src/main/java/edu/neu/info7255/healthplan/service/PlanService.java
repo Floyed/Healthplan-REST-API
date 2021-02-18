@@ -11,7 +11,7 @@ import java.util.Set;
 @Service @Slf4j
 public class PlanService {
 
-//    @Autowired
+    @Autowired
     private final JedisService jedisService;
 
     public PlanService(){

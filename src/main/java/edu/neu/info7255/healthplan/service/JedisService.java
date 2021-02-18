@@ -30,18 +30,28 @@ public class JedisService {
     }
 
     public String getSchema() {
+
+        Jedis jedis = null;
+
         try {
-            Jedis jedis = pool.getResource();
+            jedis = pool.getResource();
             return jedis.get(REDIS_PLAN_SCHEMA_KEY);
         } catch(JedisException e) {
             e.printStackTrace();
             return null;
+        } finally {
+            if(jedis != null){
+                jedis.close();
+            }
         }
     }
 
     public boolean insertSchema(String schema) {
+
+        Jedis jedis = null;
+
         try {
-            Jedis jedis = pool.getResource();
+            jedis = pool.getResource();
             if(jedis.set(REDIS_PLAN_SCHEMA_KEY, schema).equals("OK"))
                 return true;
             else
@@ -49,6 +59,10 @@ public class JedisService {
         } catch (JedisException e) {
             e.printStackTrace();
             return false;
+        } finally {
+            if(jedis != null){
+                jedis.close();
+            }
         }
     }
 
@@ -177,12 +191,17 @@ public class JedisService {
 
     public boolean checkIfKeyExist(String key) {
 
+        Jedis jedis = null;
         try {
-            Jedis jedis = pool.getResource();
+            jedis = pool.getResource();
             return jedis.exists(key);
         } catch(JedisException e) {
             e.printStackTrace();
             throw e;
+        } finally {
+            if(jedis != null){
+                jedis.close();
+            }
         }
     }
 

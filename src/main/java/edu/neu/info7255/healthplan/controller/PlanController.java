@@ -22,7 +22,7 @@ public class PlanController {
     @Autowired
     private JSONSchemaValidator jsonValidator;
 
-//    @Autowired
+    @Autowired
     private JedisService jedisService;
 
     @Autowired
@@ -31,20 +31,27 @@ public class PlanController {
     @GetMapping(value = "/plan/{planId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> getPlan(@PathVariable(name = "planId", required = true) String planId,
                                                        @RequestHeader HttpHeaders headers) {
+        try{
 
-        if (planId == null || planId.equals("")) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", "Body is Empty.Kindly provide the JSON").toString());
+            if (planId == null || planId.equals("")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", "Body is Empty.Kindly provide the JSON").toString());
+            }
+
+            String key = "plan" + jedisService.SEPARATOR + planId;
+
+            if (!jedisService.checkIfKeyExist(key)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JSONObject().put("Message", "Plan does not exist").toString());
+            }
+
+            JSONObject plan = new JSONObject(jedisService.getPlan(key));
+
+            return ResponseEntity.ok().body(plan.toString());
+
+        } catch(Exception e){
+            e.printStackTrace();
+            log.error("Exception occurred", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", e.getMessage()).toString());
         }
-
-        String key = "plan" + jedisService.SEPARATOR + planId;
-
-        if (!jedisService.checkIfKeyExist(key)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JSONObject().put("Message", "Plan does not exist").toString());
-        }
-
-        jedisService.getPlan(key);
-
-        return new ResponseEntity<>(HttpStatus.OK);
     }
 
 
@@ -70,7 +77,7 @@ public class PlanController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(new JSONObject().put("Message", "Plan already exist").toString());
             }
 
-            jedisService.getPlan(key, json);
+            jedisService.savePlan(key, json);
 
             return ResponseEntity.ok().body(" {\"message\": \"Created data with key: " + json.get("objectId") + "\" }");
 
