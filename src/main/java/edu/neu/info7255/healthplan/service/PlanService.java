@@ -44,7 +44,7 @@ public class PlanService {
         return ret;
     }
 
-    public void deletePlan(String planId){
+    public void deletePlanAndLinkedResources(String planId){
 
         try{
 

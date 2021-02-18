@@ -126,7 +126,7 @@ public class JedisService {
 
         saveToRedis(pre, String.valueOf(object));
 
-        saveMapfromJSONObject(pre, object);
+        saveChildren(pre, object);
 
         String newEtag = DigestUtils.md5Hex(object.toString());
         String eTag_key = pre + SEPARATOR +"eTag";
@@ -135,13 +135,12 @@ public class JedisService {
         return newEtag;
     }
 
-    public Map<String, Object> saveMapfromJSONObject(String pre, JSONObject object) {
+    public void saveChildren(String pre, JSONObject object) {
 
         try {
 
             String objectId = object.getString("objectId");
             String objectType = object.getString("objectType");
-            Map<String, Object> ret = new HashMap<String, Object>();
 
             Iterator<String> iterator = object.keySet().iterator();
 
@@ -150,30 +149,16 @@ public class JedisService {
                 String key = iterator.next();
                 Object value = object.get(key);
 
-                 String newKey = pre + SEPARATOR + key;
-
+                String newKey = pre + SEPARATOR + key;
 
                 if (value instanceof JSONObject) {
-
-                    Map<String, Object> child = saveMapfromJSONObject(newKey, (JSONObject) value);
-
-                    ret.put(newKey, (Map<String, Object>)child);
-
+                    saveChildren(newKey, (JSONObject) value);
                 } else if (value instanceof JSONArray) {
-
-                    List<Object> child = saveMapfromJSONList(newKey, (JSONArray) value);
-
-                    ret.put(newKey, child);
-
+                    saveMapfromJSONList(newKey, (JSONArray) value);
                 } else {
                     saveToRedis(newKey, String.valueOf(value));
-                    ret.put(newKey, value);
-
                 }
              }
-
-            return ret;
-
         } catch (JedisException e) {
             log.error(e.getMessage());
             throw e;
@@ -201,18 +186,15 @@ public class JedisService {
     }
 
 
-    private List<Object> saveMapfromJSONList(String pre, JSONArray array) {
-        List<Object> list = new ArrayList<Object>();
+    private void saveMapfromJSONList(String pre, JSONArray array) {
         for (int i = 0; i < array.length(); i++) {
             Object value = array.get(i);
             if (value instanceof JSONArray) {
-                value = saveMapfromJSONList(pre, (JSONArray) value);
+                saveMapfromJSONList(pre, (JSONArray) value);
             } else if (value instanceof JSONObject) {
-                value = saveMapfromJSONObject(pre, (JSONObject) value);
+                saveChildren(pre, (JSONObject) value);
             }
-            list.add(value);
         }
-        return list;
     }
 
 

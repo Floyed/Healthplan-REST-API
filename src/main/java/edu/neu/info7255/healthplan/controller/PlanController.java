@@ -99,8 +99,8 @@ public class PlanController {
     }
 
 
-    @DeleteMapping(path = "/plan", produces = "application/json")
-    public ResponseEntity<Object> deletePlan(@RequestBody(required = true) String planId,
+    @DeleteMapping(path = "/plan/{planId}", produces = "application/json")
+    public ResponseEntity<Object> deletePlan(@PathVariable(required = true) String planId,
                                              @RequestHeader HttpHeaders headers) throws JSONException, Exception {
         try {
 
@@ -114,7 +114,7 @@ public class PlanController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(new JSONObject().put("Message", "Plan does not exist").toString());
             }
 
-            planService.deletePlan(planId);
+            planService.deletePlanAndLinkedResources(planId);
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
 
