@@ -67,6 +67,33 @@ public class JedisService {
         }
     }
 
+    public String getValueFromPattern(String pattern) {
+
+        Jedis jedis = null;
+
+        try {
+            jedis = pool.getResource();
+            Set<String> keys =  jedis.keys(pattern);
+
+            String ret = null;
+
+            for(String s : keys){
+                ret = getValueFromKey(s);
+                break;
+            }
+
+            return ret;
+
+        } catch(JedisException e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            if(jedis != null){
+                jedis.close();
+            }
+        }
+    }
+
     public String getValueFromKey(String key) {
 
         Jedis jedis = null;
@@ -142,6 +169,14 @@ public class JedisService {
             String objectId = object.getString("objectId");
             String objectType = object.getString("objectType");
 
+            String oKey = pre + SEPARATOR + objectType + SEPARATOR + objectId;
+
+            saveToRedis(oKey, String.valueOf(object));
+
+            String newEtag = DigestUtils.md5Hex(object.toString());
+            String eTag_key = oKey + SEPARATOR +"eTag";
+            saveToRedis(eTag_key, newEtag);
+
             Iterator<String> iterator = object.keySet().iterator();
 
             while (iterator.hasNext()) {
@@ -152,6 +187,19 @@ public class JedisService {
                 String newKey = pre + SEPARATOR + key;
 
                 if (value instanceof JSONObject) {
+
+                    JSONObject jsonObj = (JSONObject) value;
+
+                    String id = jsonObj.getString("objectId");
+                    String type = jsonObj.getString("objectType");
+
+                    String objectKey = pre + SEPARATOR + type + SEPARATOR + id;
+                    saveToRedis(objectKey, String.valueOf(value));
+
+                    newEtag = DigestUtils.md5Hex(object.toString());
+                    eTag_key = objectKey + SEPARATOR +"eTag";
+                    saveToRedis(eTag_key, newEtag);
+
                     saveChildren(newKey, (JSONObject) value);
                 } else if (value instanceof JSONArray) {
                     saveMapfromJSONList(newKey, (JSONArray) value);
@@ -197,7 +245,6 @@ public class JedisService {
         }
     }
 
-
     public boolean checkIfKeyExist(String key) {
 
         Jedis jedis = null;
@@ -221,7 +268,7 @@ public class JedisService {
         try {
             jedis = pool.getResource();
 
-            for(String key : this.getListFromPattern(pattern)){
+            for(String key : this.getKeysFromPattern(pattern)){
                 jedis.del(key);
             }
 
@@ -235,7 +282,7 @@ public class JedisService {
         }
     }
 
-    public Set<String> getListFromPattern(String pattern) {
+    public Set<String> getKeysFromPattern(String pattern) {
         Jedis jedis = null;
         try {
             jedis = pool.getResource();
