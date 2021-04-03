@@ -37,7 +37,7 @@ public class PlanController {
 
     private RSAKey rsaPublicJWK;
 
-    boolean checkToken = false;
+    boolean checkToken = true;
 
     public PlanController() throws JOSEException {
 
@@ -65,7 +65,7 @@ public class PlanController {
             String key = objectType + jedisService.SEPARATOR + objectId;
 
             if (jedisService.getKeysFromPattern("*"+key).size() == 0) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JSONObject().put("Message", "Object does not exists").toString());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new JSONObject().put("Message", "Object does not exist").toString());
             }
 
             String eTagKey = key + jedisService.SEPARATOR +"eTag";
@@ -182,16 +182,24 @@ public class PlanController {
             }
 
             // No id mentioned (url and body)
-            if ((planId == null || planId.isEmpty()) && json.get("objectId") == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", "Kindly provide the correct body for PUT Operation").toString());
+            String key = json.get("objectType") + jedisService.SEPARATOR + json.get("objectId");
+
+            String eTagKey = key + jedisService.SEPARATOR +"eTag";
+
+            if (!headers.containsKey("If-Match")) {
+                //There is no etag
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Message", "There is no ETag value in request").toString());
             }
 
-            if(planId != null && !planId.equals(json.get("objectId"))){
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", "objectId from URL does not match objectId from body").toString());
+            String storedETagValue = jedisService.getValueFromPattern("*"+eTagKey);
+            String requestETagValue = headers.getFirst("If-Match");
+
+            if (requestETagValue != null && !requestETagValue.equals(storedETagValue)) {
+                //etag value is the different from server. Therefore, not returning etag
+                return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(new JSONObject().put("Message", "ETag value has changed").toString());
             }
 
             String targetId = json.get("objectId").toString();
-            String key = json.get("objectType").toString() + jedisService.SEPARATOR + json.get("objectId").toString();
             HttpStatus ret = null;
 
             // If object exists return 200 OK or 204 No content
@@ -239,7 +247,6 @@ public class PlanController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Error", je.getMessage()).toString());
             }
 
-
             // Id mentioned (url and body)
             if (inputJson.has("objectId")) {
 
@@ -255,6 +262,22 @@ public class PlanController {
 
             if (!jedisService.checkIfKeyExist(key)) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(new JSONObject().put("Message", "Plan does not exist").toString());
+            }
+
+            // No id mentioned (url and body)
+            String eTagKey = key + jedisService.SEPARATOR +"eTag";
+
+            if (!headers.containsKey("If-Match")) {
+                //There is no etag
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new JSONObject().put("Message", "There is no ETag value in request").toString());
+            }
+
+            String storedETagValue = jedisService.getValueFromPattern("*"+eTagKey);
+            String requestETagValue = headers.getFirst("If-Match");
+
+            if (requestETagValue != null && !requestETagValue.equals(storedETagValue)) {
+                //etag value is the different from server. Therefore, not returning etag
+                return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(new JSONObject().put("Message", "ETag value has changed").toString());
             }
 
             String eTag = planService.patchPlanAndLinkedResources(inputJson, key, urlPlanId);
